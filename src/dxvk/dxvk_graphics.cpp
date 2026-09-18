@@ -410,8 +410,11 @@ namespace dxvk {
     // Render pass format and image layouts
     DxvkRenderPassFormat passFormat = renderPass->format();
 
-    // Set up dynamic states as needed
-    std::array<VkDynamicState, 6> dynamicStates;
+    // Set up dynamic states as needed. Room for the 6 pre-existing states
+    // plus the ones this patch adds (currently 2: cull mode / front face -
+    // extend this array's size to match whenever more VK_DYNAMIC_STATE_*_EXT
+    // entries are added below for the rest of EDS1/2/3).
+    std::array<VkDynamicState, 8> dynamicStates;
     uint32_t                      dynamicStateCount = 0;
 
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -428,6 +431,18 @@ namespace dxvk {
 
     if (state.useDynamicStencilRef())
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+
+    // VK_EXT_extended_dynamic_state: cull mode / front face are always
+    // marked dynamic when the feature is available (see DxvkContext::
+    // setRasterizerState, which is what makes this worthwhile - it feeds a
+    // fixed placeholder into state.rs.cullMode()/frontFace() in that case,
+    // so rsInfo below stays correct without extra logic here).
+    bool dynCullMode = m_pipeMgr->m_device->features().extExtendedDynamicState.extendedDynamicState;
+
+    if (dynCullMode) {
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE_EXT;
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE_EXT;
+    }
 
     // Figure out the actual sample count to use
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
@@ -675,9 +690,43 @@ namespace dxvk {
     dyInfo.dynamicStateCount      = dynamicStateCount;
     dyInfo.pDynamicStates         = dynamicStates.data();
 
+    // VK_KHR_dynamic_rendering: a pipeline meant to be used with
+    // vkCmdBeginRendering (see DxvkContext::renderPassBindFramebuffer) must
+    // itself be created with renderPass = VK_NULL_HANDLE and the attachment
+    // formats supplied here instead - a real VkRenderPass handle and this
+    // struct are mutually exclusive (the struct is simply ignored if
+    // renderPass is not VK_NULL_HANDLE), so which one gets used has to match
+    // exactly how the pipeline will later be bound.
+    bool useDynamicRendering = m_pipeMgr->m_device->features().khrDynamicRendering.dynamicRendering;
+
+    std::array<VkFormat, MaxNumRenderTargets> colorAttachmentFormats;
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+      colorAttachmentFormats[i] = passFormat.color[i].format;
+
+    VkFormat depthAttachmentFormat   = VK_FORMAT_UNDEFINED;
+    VkFormat stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+
+    if (passFormat.depth.format != VK_FORMAT_UNDEFINED) {
+      auto depthFormatInfo = imageFormatInfo(passFormat.depth.format);
+
+      if (depthFormatInfo->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+        depthAttachmentFormat = passFormat.depth.format;
+      if (depthFormatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+        stencilAttachmentFormat = passFormat.depth.format;
+    }
+
+    VkPipelineRenderingCreateInfoKHR renderingInfo;
+    renderingInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+    renderingInfo.pNext                   = nullptr;
+    renderingInfo.viewMask                = 0;
+    renderingInfo.colorAttachmentCount    = MaxNumRenderTargets;
+    renderingInfo.pColorAttachmentFormats = colorAttachmentFormats.data();
+    renderingInfo.depthAttachmentFormat   = depthAttachmentFormat;
+    renderingInfo.stencilAttachmentFormat = stencilAttachmentFormat;
+
     VkGraphicsPipelineCreateInfo info;
     info.sType                    = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.pNext                    = nullptr;
+    info.pNext                    = useDynamicRendering ? &renderingInfo : nullptr;
     info.flags                    = 0;
     info.stageCount               = stages.size();
     info.pStages                  = stages.data();
@@ -691,7 +740,7 @@ namespace dxvk {
     info.pColorBlendState         = &cbInfo;
     info.pDynamicState            = &dyInfo;
     info.layout                   = m_layout->pipelineLayout();
-    info.renderPass               = renderPass->getDefaultHandle();
+    info.renderPass               = useDynamicRendering ? VK_NULL_HANDLE : renderPass->getDefaultHandle();
     info.subpass                  = 0;
     VkPipeline base = m_basePipeline.load(std::memory_order_acquire);
     if (base != VK_NULL_HANDLE)
