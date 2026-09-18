@@ -41,16 +41,45 @@ namespace dxvk {
     VkPhysicalDevice4444FormatsFeaturesEXT                    ext4444Formats;
     VkPhysicalDeviceCustomBorderColorFeaturesEXT              extCustomBorderColor;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
+    VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT extDynamicRenderingUnusedAttachments;
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT           extExtendedDynamicState;
+    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT          extExtendedDynamicState2;
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT          extExtendedDynamicState3;
+    VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT            extGlobalPriorityQuery;
     VkPhysicalDeviceHostQueryResetFeaturesEXT                 extHostQueryReset;
+    VkPhysicalDeviceImageCompressionControlFeaturesEXT        extImageCompressionControl;
+    VkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT extImageCompressionControlSwapchain;
     VkPhysicalDeviceMemoryPriorityFeaturesEXT                 extMemoryPriority;
+    VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT extMultisampledRenderToSingleSampled;
     VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT             extNonSeamlessCubeMap;
+    VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT   extPipelineCreationCacheControl;
+    VkPhysicalDevicePipelineProtectedAccessFeaturesEXT        extPipelineProtectedAccess;
+    VkPhysicalDevicePipelineRobustnessFeaturesEXT             extPipelineRobustness;
+    VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT extRasterizationOrderAttachmentAccess;
     VkPhysicalDeviceRobustness2FeaturesEXT                    extRobustness2;
     VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT extShaderDemoteToHelperInvocation;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor;
+    VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT        extVertexInputDynamicState;
     VkPhysicalDeviceBufferDeviceAddressFeaturesKHR            khrBufferDeviceAddress;
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR               khrDynamicRendering;
+    VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR      khrDynamicRenderingLocalRead;
+    VkPhysicalDeviceImagelessFramebufferFeaturesKHR           khrImagelessFramebuffer;
+    VkPhysicalDeviceMaintenance4FeaturesKHR                   khrMaintenance4;
+    VkPhysicalDeviceMaintenance5FeaturesKHR                   khrMaintenance5;
+    VkPhysicalDeviceMaintenance6FeaturesKHR                   khrMaintenance6;
+    VkPhysicalDeviceMaintenance7FeaturesKHR                   khrMaintenance7;
+    VkPhysicalDevicePipelineBinaryFeaturesKHR                 khrPipelineBinary;
+    VkPhysicalDeviceSynchronization2FeaturesKHR               khrSynchronization2;
     VkPhysicalDeviceTimelineSemaphoreFeaturesKHR              khrTimelineSemaphore;
+    VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR  khrZeroInitializeWorkgroupMemory;
   };
+
+  // NOTE: a handful of the requested extensions add no VkPhysicalDeviceFeatures2-
+  // chainable struct at all (VK_KHR_pipeline_library, VK_EXT_pipeline_creation_feedback,
+  // VK_EXT_queue_family_foreign, VK_EXT_global_priority, VK_EXT_image_drm_format_modifier,
+  // VK_KHR_swapchain_mutable_format, VK_KHR_incremental_present) - they only add
+  // create-info structs used at pipeline/queue/image/swapchain creation time, so
+  // there is nothing to add here for them; see dxvk_extensions.h for the full list.
 
 }
