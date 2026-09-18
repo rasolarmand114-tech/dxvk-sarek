@@ -248,24 +248,92 @@ namespace dxvk {
       if (!srcFlags) srcFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
       if (!dstFlags) dstFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-      VkMemoryBarrier memBarrier;
-      memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-      memBarrier.pNext = nullptr;
-      memBarrier.srcAccessMask = m_srcAccess;
-      memBarrier.dstAccessMask = m_dstAccess;
+      if (commandList->canUseSynchronization2()) {
+        // VK_KHR_synchronization2 path. The accumulated 32-bit stage/access
+        // masks above apply to every barrier in this batch either way (that
+        // is exactly what the classic vkCmdPipelineBarrier call below also
+        // does - one global srcStageMask/dstStageMask for the whole batch),
+        // so converting is a direct 1:1 widen of each VkXxxMemoryBarrier
+        // into a VkXxxMemoryBarrier2 with those same two stage masks
+        // attached per-barrier, as VkDependencyInfo requires. Every classic
+        // VK_ACCESS_*_BIT / VK_PIPELINE_STAGE_*_BIT constant has the same
+        // numeric value in the 64-bit VkAccessFlags2/VkPipelineStageFlags2
+        // types by design, so this widen is exact, not approximate.
+        VkMemoryBarrier2KHR memBarrier2;
+        memBarrier2.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR;
+        memBarrier2.pNext = nullptr;
+        memBarrier2.srcStageMask  = srcFlags;
+        memBarrier2.srcAccessMask = m_srcAccess;
+        memBarrier2.dstStageMask  = dstFlags;
+        memBarrier2.dstAccessMask = m_dstAccess;
 
-      VkMemoryBarrier* pMemBarrier = nullptr;
-      if (m_srcAccess | m_dstAccess)
-        pMemBarrier = &memBarrier;
-      
-      commandList->cmdPipelineBarrier(
-        m_cmdBuffer, srcFlags, dstFlags, 0,
-        pMemBarrier ? 1 : 0, pMemBarrier,
-        m_bufBarriers.size(),
-        m_bufBarriers.data(),
-        m_imgBarriers.size(),
-        m_imgBarriers.data());
-      
+        std::vector<VkBufferMemoryBarrier2KHR> bufBarriers2(m_bufBarriers.size());
+        for (size_t i = 0; i < m_bufBarriers.size(); i++) {
+          const VkBufferMemoryBarrier& src = m_bufBarriers[i];
+          VkBufferMemoryBarrier2KHR& dst = bufBarriers2[i];
+          dst.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
+          dst.pNext               = nullptr;
+          dst.srcStageMask        = srcFlags;
+          dst.srcAccessMask       = src.srcAccessMask;
+          dst.dstStageMask        = dstFlags;
+          dst.dstAccessMask       = src.dstAccessMask;
+          dst.srcQueueFamilyIndex = src.srcQueueFamilyIndex;
+          dst.dstQueueFamilyIndex = src.dstQueueFamilyIndex;
+          dst.buffer              = src.buffer;
+          dst.offset               = src.offset;
+          dst.size                 = src.size;
+        }
+
+        std::vector<VkImageMemoryBarrier2KHR> imgBarriers2(m_imgBarriers.size());
+        for (size_t i = 0; i < m_imgBarriers.size(); i++) {
+          const VkImageMemoryBarrier& src = m_imgBarriers[i];
+          VkImageMemoryBarrier2KHR& dst = imgBarriers2[i];
+          dst.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
+          dst.pNext               = nullptr;
+          dst.srcStageMask        = srcFlags;
+          dst.srcAccessMask       = src.srcAccessMask;
+          dst.dstStageMask        = dstFlags;
+          dst.dstAccessMask       = src.dstAccessMask;
+          dst.oldLayout           = src.oldLayout;
+          dst.newLayout           = src.newLayout;
+          dst.srcQueueFamilyIndex = src.srcQueueFamilyIndex;
+          dst.dstQueueFamilyIndex = src.dstQueueFamilyIndex;
+          dst.image               = src.image;
+          dst.subresourceRange    = src.subresourceRange;
+        }
+
+        VkDependencyInfoKHR depInfo;
+        depInfo.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+        depInfo.pNext                    = nullptr;
+        depInfo.dependencyFlags          = 0;
+        depInfo.memoryBarrierCount       = (m_srcAccess | m_dstAccess) ? 1 : 0;
+        depInfo.pMemoryBarriers          = &memBarrier2;
+        depInfo.bufferMemoryBarrierCount = bufBarriers2.size();
+        depInfo.pBufferMemoryBarriers    = bufBarriers2.data();
+        depInfo.imageMemoryBarrierCount  = imgBarriers2.size();
+        depInfo.pImageMemoryBarriers     = imgBarriers2.data();
+
+        commandList->cmdPipelineBarrier2(m_cmdBuffer, &depInfo);
+      } else {
+        VkMemoryBarrier memBarrier;
+        memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        memBarrier.pNext = nullptr;
+        memBarrier.srcAccessMask = m_srcAccess;
+        memBarrier.dstAccessMask = m_dstAccess;
+
+        VkMemoryBarrier* pMemBarrier = nullptr;
+        if (m_srcAccess | m_dstAccess)
+          pMemBarrier = &memBarrier;
+
+        commandList->cmdPipelineBarrier(
+          m_cmdBuffer, srcFlags, dstFlags, 0,
+          pMemBarrier ? 1 : 0, pMemBarrier,
+          m_bufBarriers.size(),
+          m_bufBarriers.data(),
+          m_imgBarriers.size(),
+          m_imgBarriers.data());
+      }
+
       commandList->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
 
       this->reset();
