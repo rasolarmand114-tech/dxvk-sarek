@@ -67,6 +67,7 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
       DxvkContextFlag::GpDirtyDepthBounds,
+      DxvkContextFlag::GpDirtyCullMode,
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::CpDirtyResources,
@@ -2417,17 +2418,47 @@ namespace dxvk {
 
 
   void DxvkContext::setRasterizerState(const DxvkRasterizerState& rs) {
+    // With VK_EXT_extended_dynamic_state, cull mode and front face are set
+    // with vkCmdSetCullModeEXT/vkCmdSetFrontFaceEXT (updateDynamicState)
+    // instead of being baked into the pipeline. The values written into the
+    // pipeline state key below are then fixed placeholders rather than the
+    // real requested values, so switching cull mode alone - very common for
+    // mirrors/reflections/shadow passes - no longer produces a distinct
+    // DxvkGraphicsPipelineStateInfo and therefore no longer causes a pipeline
+    // lookup/compile that is otherwise identical to one already in the cache.
+    // The real value lives in m_state.dyn.cullMode/frontFace instead.
+    //
+    // Before this patch VK_EXT_extended_dynamic_state was enabled on the
+    // device and queried into DxvkContextFeature::ExtendedDynamicState, but
+    // the only place that flag was ever read was to pick vkCmdBindVertexBuffers2
+    // over vkCmdBindVertexBuffers - cull mode and front face were always
+    // static, so the extension bought nothing for rasterizer state. This is
+    // the fix; the same fixed-placeholder-in-the-key technique is how the
+    // rest of VK_EXT_extended_dynamic_state[23]'s ~35 remaining dynamic
+    // states (primitive topology, depth/stencil test enable/op, blend
+    // toggles, polygon mode, ...) can be wired up the same way later.
+    bool dynCullMode = m_features.test(DxvkContextFeature::ExtendedDynamicState);
+
+    VkCullModeFlags cullMode = dynCullMode ? VkCullModeFlags(VK_CULL_MODE_NONE) : rs.cullMode;
+    VkFrontFace     frontFace = dynCullMode ? VK_FRONT_FACE_CLOCKWISE : rs.frontFace;
+
     m_state.gp.state.rs = DxvkRsInfo(
       rs.depthClipEnable,
       rs.depthBiasEnable,
       rs.polygonMode,
-      rs.cullMode,
-      rs.frontFace,
+      cullMode,
+      frontFace,
       m_state.gp.state.rs.viewportCount(),
       rs.sampleCount,
       rs.conservativeMode);
 
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+
+    if (dynCullMode && (m_state.dyn.cullMode != rs.cullMode || m_state.dyn.frontFace != rs.frontFace)) {
+      m_state.dyn.cullMode  = rs.cullMode;
+      m_state.dyn.frontFace = rs.frontFace;
+      m_flags.set(DxvkContextFlag::GpDirtyCullMode);
+    }
   }
 
 
@@ -3936,29 +3967,93 @@ namespace dxvk {
     const VkClearValue*         clearValues) {
     const DxvkFramebufferSize fbSize = framebufferInfo.size();
 
-    Rc<DxvkFramebuffer> framebuffer = this->lookupFramebuffer(framebufferInfo);
-
     VkRect2D renderArea;
     renderArea.offset = VkOffset2D { 0, 0 };
     renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
 
-    VkRenderPassBeginInfo info;
-    info.sType                = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    info.pNext                = nullptr;
-    info.renderPass           = framebufferInfo.renderPass()->getHandle(ops);
-    info.framebuffer          = framebuffer->handle();
-    info.renderArea           = renderArea;
-    info.clearValueCount      = clearValueCount;
-    info.pClearValues         = clearValues;
-
-    m_cmd->cmdBeginRenderPass(&info,
-      VK_SUBPASS_CONTENTS_INLINE);
-
-    m_cmd->trackResource<DxvkAccess::None>(framebuffer);
-
+    // Track resources either way; do this up front since both paths need it.
     for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
       m_cmd->trackResource<DxvkAccess::None> (framebufferInfo.getAttachment(i).view);
       m_cmd->trackResource<DxvkAccess::Write>(framebufferInfo.getAttachment(i).view->image());
+    }
+
+    if (m_cmd->canUseDynamicRendering()) {
+      // VK_KHR_dynamic_rendering path: no VkRenderPass/VkFramebuffer object
+      // is created or looked up at all. Attachment info is read directly out
+      // of framebufferInfo/ops using the same per-attachment ID scheme the
+      // resource-tracking loop above already relies on (getColorAttachmentIndex
+      // < 0 means the depth-stencil slot, otherwise it's the color index),
+      // so clearValues[i] is guaranteed to line up with the right attachment
+      // without needing to know how DxvkRenderPass orders its own attachment
+      // array. Store op is always STORE, matching DxvkColorAttachmentOps /
+      // DxvkDepthAttachmentOps, which only ever carry a load op - this
+      // fork's render pass creation (dxvk_renderpass.cpp) never uses
+      // anything but VK_ATTACHMENT_STORE_OP_STORE either.
+      std::array<VkRenderingAttachmentInfoKHR, MaxNumRenderTargets> colorAttachments;
+      uint32_t colorAttachmentCount = 0;
+
+      VkRenderingAttachmentInfoKHR depthAttachment;
+      VkRenderingAttachmentInfoKHR stencilAttachment;
+      bool hasDepth = false;
+
+      for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
+        const DxvkAttachment& attachment = framebufferInfo.getAttachment(i);
+        int32_t colorIndex = framebufferInfo.getColorAttachmentIndex(i);
+
+        VkRenderingAttachmentInfoKHR info;
+        info.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        info.pNext               = nullptr;
+        info.imageView            = attachment.view->handle();
+        info.imageLayout          = attachment.layout;
+        info.resolveMode          = VK_RESOLVE_MODE_NONE;
+        info.resolveImageView     = VK_NULL_HANDLE;
+        info.resolveImageLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
+        info.storeOp              = VK_ATTACHMENT_STORE_OP_STORE;
+        info.clearValue           = clearValueCount > i ? clearValues[i] : VkClearValue();
+
+        if (colorIndex >= 0) {
+          info.loadOp = ops.colorOps[colorIndex].loadOp;
+          colorAttachments[colorAttachmentCount++] = info;
+        } else {
+          depthAttachment          = info;
+          depthAttachment.loadOp   = ops.depthOps.loadOpD;
+          stencilAttachment        = info;
+          stencilAttachment.loadOp = ops.depthOps.loadOpS;
+          hasDepth = true;
+        }
+      }
+
+      VkRenderingInfoKHR renderingInfo;
+      renderingInfo.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+      renderingInfo.pNext                = nullptr;
+      renderingInfo.flags                = 0;
+      renderingInfo.renderArea           = renderArea;
+      renderingInfo.layerCount           = 1;
+      renderingInfo.viewMask             = 0;
+      renderingInfo.colorAttachmentCount = colorAttachmentCount;
+      renderingInfo.pColorAttachments    = colorAttachments.data();
+      renderingInfo.pDepthAttachment     = hasDepth ? &depthAttachment   : nullptr;
+      renderingInfo.pStencilAttachment   = hasDepth ? &stencilAttachment : nullptr;
+
+      m_cmd->cmdBeginRendering(&renderingInfo);
+    } else {
+      // Classic VK_RENDER_PASS / VK_FRAMEBUFFER path (also used when the
+      // adapter does not support VK_KHR_dynamic_rendering).
+      Rc<DxvkFramebuffer> framebuffer = this->lookupFramebuffer(framebufferInfo);
+
+      VkRenderPassBeginInfo info;
+      info.sType                = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+      info.pNext                = nullptr;
+      info.renderPass           = framebufferInfo.renderPass()->getHandle(ops);
+      info.framebuffer          = framebuffer->handle();
+      info.renderArea           = renderArea;
+      info.clearValueCount      = clearValueCount;
+      info.pClearValues         = clearValues;
+
+      m_cmd->cmdBeginRenderPass(&info,
+        VK_SUBPASS_CONTENTS_INLINE);
+
+      m_cmd->trackResource<DxvkAccess::None>(framebuffer);
     }
 
     m_cmd->addStatCtr(DxvkStatCounter::CmdRenderPassCount, 1);
@@ -3966,7 +4061,10 @@ namespace dxvk {
 
 
   void DxvkContext::renderPassUnbindFramebuffer() {
-    m_cmd->cmdEndRenderPass();
+    if (m_cmd->canUseDynamicRendering())
+      m_cmd->cmdEndRendering();
+    else
+      m_cmd->cmdEndRenderPass();
   }
 
 
@@ -4126,7 +4224,8 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyStencilRef,
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
-      DxvkContextFlag::GpDirtyDepthBounds);
+      DxvkContextFlag::GpDirtyDepthBounds,
+      DxvkContextFlag::GpDirtyCullMode);
 
     m_gpActivePipeline = VK_NULL_HANDLE;
   }
@@ -4797,6 +4896,16 @@ namespace dxvk {
         m_state.dyn.depthBias.depthBiasConstant,
         m_state.dyn.depthBias.depthBiasClamp,
         m_state.dyn.depthBias.depthBiasSlope);
+    }
+
+    // VK_EXT_extended_dynamic_state. GpDirtyCullMode is only ever set from
+    // setRasterizerState() when DxvkContextFeature::ExtendedDynamicState is
+    // present (see there), so no additional feature check is needed here.
+    if (m_flags.test(DxvkContextFlag::GpDirtyCullMode)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyCullMode);
+
+      m_cmd->cmdSetCullMode(m_state.dyn.cullMode);
+      m_cmd->cmdSetFrontFace(m_state.dyn.frontFace);
     }
 
     if (m_flags.all(DxvkContextFlag::GpDirtyDepthBounds,
