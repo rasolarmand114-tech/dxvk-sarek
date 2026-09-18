@@ -5,6 +5,7 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
+#include "dxvk_ext_functions.h"
 #include "dxvk_fence.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
@@ -306,6 +307,26 @@ namespace dxvk {
             VkSubpassContents       contents) {
       m_vkd->vkCmdBeginRenderPass(m_execBuffer,
         pRenderPassBegin, contents);
+    }
+
+
+    // VK_KHR_dynamic_rendering. Only call when the extension/feature is
+    // enabled (m_extFunctions.vkCmdBeginRenderingKHR is null otherwise) -
+    // see DxvkContext::renderPassBindFramebuffer / renderPassUnbindFramebuffer.
+    bool canUseDynamicRendering() const {
+      return m_extFunctions.vkCmdBeginRenderingKHR != nullptr
+          && m_extFunctions.vkCmdEndRenderingKHR   != nullptr;
+    }
+
+
+    void cmdBeginRendering(
+      const VkRenderingInfoKHR*     pRenderingInfo) {
+      m_extFunctions.vkCmdBeginRenderingKHR(m_execBuffer, pRenderingInfo);
+    }
+
+
+    void cmdEndRendering() {
+      m_extFunctions.vkCmdEndRenderingKHR(m_execBuffer);
     }
 
 
@@ -670,6 +691,24 @@ namespace dxvk {
         bufferMemoryBarrierCount, pBufferMemoryBarriers,
         imageMemoryBarrierCount,  pImageMemoryBarriers);
     }
+
+
+    // VK_KHR_synchronization2. Only call when m_extFunctions.vkCmdPipelineBarrier2KHR
+    // is non-null - see DxvkBarrierSet::recordCommands in dxvk_barrier.cpp,
+    // which is the only caller and already guards on the device feature.
+    bool canUseSynchronization2() const {
+      return m_extFunctions.vkCmdPipelineBarrier2KHR != nullptr;
+    }
+
+
+    void cmdPipelineBarrier2(
+            DxvkCmdBuffer          cmdBuffer,
+      const VkDependencyInfoKHR*   pDependencyInfo) {
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_extFunctions.vkCmdPipelineBarrier2KHR(
+        getCmdBuffer(cmdBuffer), pDependencyInfo);
+    }
     
     
     void cmdPushConstants(
@@ -712,6 +751,19 @@ namespace dxvk {
     
     void cmdSetBlendConstants(const float blendConstants[4]) {
       m_vkd->vkCmdSetBlendConstants(m_execBuffer, blendConstants);
+    }
+
+
+    // VK_EXT_extended_dynamic_state. Only call when the feature is enabled -
+    // see DxvkContext::setRasterizerState / updateDynamicState, which are
+    // the only callers and already gate on DxvkContextFeature::ExtendedDynamicState.
+    void cmdSetCullMode(VkCullModeFlags cullMode) {
+      m_extFunctions.vkCmdSetCullModeEXT(m_execBuffer, cullMode);
+    }
+
+
+    void cmdSetFrontFace(VkFrontFace frontFace) {
+      m_extFunctions.vkCmdSetFrontFaceEXT(m_execBuffer, frontFace);
     }
     
 
@@ -794,6 +846,11 @@ namespace dxvk {
     DxvkDevice*         m_device;
     Rc<vk::DeviceFn>    m_vkd;
     Rc<vk::InstanceFn>  m_vki;
+
+    // Copied by value from m_device->extFunctions() in the constructor
+    // (dxvk_cmdlist.cpp): DxvkDevice is only forward-declared in this
+    // header, so it cannot be a complete type here - see dxvk_ext_functions.h.
+    DxvkExtDeviceFunctions m_extFunctions;
     
     VkFence             m_fence;
     
