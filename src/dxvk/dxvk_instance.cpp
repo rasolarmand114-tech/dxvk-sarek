@@ -128,6 +128,28 @@ namespace dxvk {
 
     std::string appName = env::getExeName();
 
+    // Request the highest instance-level Vulkan version actually available,
+    // capped at 1.3, instead of hardcoding 1.1. This does not raise the
+    // effective minimum: dxvk_device_filter.cpp still floors individual
+    // physical devices at 1.1 (unchanged), and every extension this patch
+    // adds is enabled and called through its own KHR/EXT-suffixed name
+    // rather than assumed from core version, so a device that only reports
+    // apiVersion 1.1 with the relevant extensions layered on top continues
+    // to work exactly as before. What this buys is instance-level things
+    // that only exist from 1.1/1.2/1.3 core (e.g. vkGetPhysicalDeviceFeatures2
+    // without the KHR suffix) becoming available without extra extension
+    // checks, on any loader new enough to report them - vkEnumerateInstanceVersion
+    // itself has existed since 1.1, and every loader here is already assumed
+    // to be at least that new (see dxvk_device_filter.cpp's existing floor).
+    uint32_t instanceVersion = VK_MAKE_VERSION(1, 1, 0);
+
+    if (m_vkl->vkEnumerateInstanceVersion) {
+      uint32_t availableVersion = VK_MAKE_VERSION(1, 1, 0);
+
+      if (m_vkl->vkEnumerateInstanceVersion(&availableVersion) == VK_SUCCESS)
+        instanceVersion = std::min(availableVersion, uint32_t(VK_MAKE_VERSION(1, 3, 0)));
+    }
+
     VkApplicationInfo appInfo;
     appInfo.sType                 = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pNext                 = nullptr;
@@ -135,7 +157,7 @@ namespace dxvk {
     appInfo.applicationVersion    = 0;
     appInfo.pEngineName           = "DXVK";
     appInfo.engineVersion         = VK_MAKE_VERSION(1, 13, 0);
-    appInfo.apiVersion            = VK_MAKE_VERSION(1, 1, 0);
+    appInfo.apiVersion            = instanceVersion;
 
     VkInstanceCreateInfo info;
     info.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
