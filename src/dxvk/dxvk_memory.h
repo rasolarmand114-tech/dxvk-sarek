@@ -50,8 +50,9 @@ namespace dxvk {
    * which VMA has no visibility into.
    */
   struct DxvkMemoryStats {
-    VkDeviceSize memoryAllocated = 0;
-    VkDeviceSize memoryUsed      = 0;
+  VkDeviceSize memoryAllocated = 0;
+  VkDeviceSize memoryUsed      = 0;
+  VkDeviceSize memoryBudget    = 0;
   };
 
 
