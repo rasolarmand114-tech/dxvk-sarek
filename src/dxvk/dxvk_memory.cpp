@@ -29,6 +29,7 @@ namespace dxvk {
       DxvkMemoryStats stats;
       stats.memoryAllocated = budget.statistics.blockBytes      + rawBytes;
       stats.memoryUsed      = budget.statistics.allocationBytes + rawBytes;
+      stats.memoryBudget    = budget.budget;
       return stats;
     }
 
