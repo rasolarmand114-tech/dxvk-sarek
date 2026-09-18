@@ -267,37 +267,66 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 32> devExtensionList = {{
+    std::array<DxvkExt*, 61> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
       &devExtensions.extConservativeRasterization,
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
+      &devExtensions.extDynamicRenderingUnusedAttachments,
       &devExtensions.extExtendedDynamicState,
+      &devExtensions.extExtendedDynamicState2,
+      &devExtensions.extExtendedDynamicState3,
       &devExtensions.extFullScreenExclusive,
+      &devExtensions.extGlobalPriority,
+      &devExtensions.extGlobalPriorityQuery,
       &devExtensions.extHostQueryReset,
+      &devExtensions.extImageCompressionControl,
+      &devExtensions.extImageCompressionControlSwapchain,
+      &devExtensions.extImageDrmFormatModifier,
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
+      &devExtensions.extMultisampledRenderToSingleSampled,
       &devExtensions.extNonSeamlessCubeMap,
+      &devExtensions.extPipelineCreationCacheControl,
+      &devExtensions.extPipelineCreationFeedback,
+      &devExtensions.extPipelineProtectedAccess,
+      &devExtensions.extPipelineRobustness,
+      &devExtensions.extQueueFamilyForeign,
+      &devExtensions.extRasterizationOrderAttachmentAccess,
       &devExtensions.extRobustness2,
       &devExtensions.extShaderDemoteToHelperInvocation,
       &devExtensions.extShaderStencilExport,
       &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
+      &devExtensions.extVertexInputDynamicState,
       &devExtensions.khrBufferDeviceAddress,
       &devExtensions.khrCreateRenderPass2,
       &devExtensions.khrDepthStencilResolve,
       &devExtensions.khrDrawIndirectCount,
       &devExtensions.khrDriverProperties,
+      &devExtensions.khrDynamicRendering,
+      &devExtensions.khrDynamicRenderingLocalRead,
       &devExtensions.khrExternalMemoryWin32,
       &devExtensions.khrExternalSemaphoreWin32,
       &devExtensions.khrImageFormatList,
+      &devExtensions.khrImagelessFramebuffer,
+      &devExtensions.khrIncrementalPresent,
+      &devExtensions.khrMaintenance4,
+      &devExtensions.khrMaintenance5,
+      &devExtensions.khrMaintenance6,
+      &devExtensions.khrMaintenance7,
+      &devExtensions.khrPipelineBinary,
+      &devExtensions.khrPipelineLibrary,
       &devExtensions.khrSamplerMirrorClampToEdge,
       &devExtensions.khrShaderFloatControls,
       &devExtensions.khrSwapchain,
+      &devExtensions.khrSwapchainMutableFormat,
+      &devExtensions.khrSynchronization2,
       &devExtensions.khrTimelineSemaphore,
+      &devExtensions.khrZeroInitializeWorkgroupMemory,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
     }};
@@ -435,6 +464,146 @@ namespace dxvk {
     if (devExtensions.khrTimelineSemaphore) {
       enabledFeatures.khrTimelineSemaphore.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR;
       enabledFeatures.khrTimelineSemaphore.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrTimelineSemaphore);
+    }
+
+    // Dynamic rendering and dynamic state extensions. For every one of these
+    // the feature struct is a pure bag of "is sub-feature X usable" booleans,
+    // so we copy the queried (driver-supported) struct wholesale rather than
+    // re-stating each boolean by hand: this enables every sub-feature the
+    // adapter actually reports, which is always safe (an enabled-but-unused
+    // dynamic state capability is a no-op), and avoids hand-transcribing ~30
+    // field names for VK_EXT_extended_dynamic_state3 alone. sType/pNext are
+    // fixed up immediately afterwards.
+    if (devExtensions.khrDynamicRendering) {
+      enabledFeatures.khrDynamicRendering = m_deviceFeatures.khrDynamicRendering;
+      enabledFeatures.khrDynamicRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+      enabledFeatures.khrDynamicRendering.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrDynamicRendering);
+    }
+
+    if (devExtensions.khrDynamicRenderingLocalRead) {
+      enabledFeatures.khrDynamicRenderingLocalRead = m_deviceFeatures.khrDynamicRenderingLocalRead;
+      enabledFeatures.khrDynamicRenderingLocalRead.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR;
+      enabledFeatures.khrDynamicRenderingLocalRead.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrDynamicRenderingLocalRead);
+    }
+
+    if (devExtensions.extDynamicRenderingUnusedAttachments) {
+      enabledFeatures.extDynamicRenderingUnusedAttachments = m_deviceFeatures.extDynamicRenderingUnusedAttachments;
+      enabledFeatures.extDynamicRenderingUnusedAttachments.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT;
+      enabledFeatures.extDynamicRenderingUnusedAttachments.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDynamicRenderingUnusedAttachments);
+    }
+
+    if (devExtensions.extMultisampledRenderToSingleSampled) {
+      enabledFeatures.extMultisampledRenderToSingleSampled = m_deviceFeatures.extMultisampledRenderToSingleSampled;
+      enabledFeatures.extMultisampledRenderToSingleSampled.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT;
+      enabledFeatures.extMultisampledRenderToSingleSampled.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extMultisampledRenderToSingleSampled);
+    }
+
+    if (devExtensions.extExtendedDynamicState2) {
+      enabledFeatures.extExtendedDynamicState2 = m_deviceFeatures.extExtendedDynamicState2;
+      enabledFeatures.extExtendedDynamicState2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT;
+      enabledFeatures.extExtendedDynamicState2.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extExtendedDynamicState2);
+    }
+
+    if (devExtensions.extExtendedDynamicState3) {
+      enabledFeatures.extExtendedDynamicState3 = m_deviceFeatures.extExtendedDynamicState3;
+      enabledFeatures.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+      enabledFeatures.extExtendedDynamicState3.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extExtendedDynamicState3);
+    }
+
+    if (devExtensions.extVertexInputDynamicState) {
+      enabledFeatures.extVertexInputDynamicState = m_deviceFeatures.extVertexInputDynamicState;
+      enabledFeatures.extVertexInputDynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT;
+      enabledFeatures.extVertexInputDynamicState.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extVertexInputDynamicState);
+    }
+
+    if (devExtensions.khrSynchronization2) {
+      enabledFeatures.khrSynchronization2 = m_deviceFeatures.khrSynchronization2;
+      enabledFeatures.khrSynchronization2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+      enabledFeatures.khrSynchronization2.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrSynchronization2);
+    }
+
+    if (devExtensions.khrZeroInitializeWorkgroupMemory) {
+      enabledFeatures.khrZeroInitializeWorkgroupMemory = m_deviceFeatures.khrZeroInitializeWorkgroupMemory;
+      enabledFeatures.khrZeroInitializeWorkgroupMemory.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES_KHR;
+      enabledFeatures.khrZeroInitializeWorkgroupMemory.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrZeroInitializeWorkgroupMemory);
+    }
+
+    if (devExtensions.khrImagelessFramebuffer) {
+      enabledFeatures.khrImagelessFramebuffer = m_deviceFeatures.khrImagelessFramebuffer;
+      enabledFeatures.khrImagelessFramebuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR;
+      enabledFeatures.khrImagelessFramebuffer.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrImagelessFramebuffer);
+    }
+
+    if (devExtensions.khrMaintenance4) {
+      enabledFeatures.khrMaintenance4 = m_deviceFeatures.khrMaintenance4;
+      enabledFeatures.khrMaintenance4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
+      enabledFeatures.khrMaintenance4.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrMaintenance4);
+    }
+
+    if (devExtensions.khrMaintenance5) {
+      enabledFeatures.khrMaintenance5 = m_deviceFeatures.khrMaintenance5;
+      enabledFeatures.khrMaintenance5.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR;
+      enabledFeatures.khrMaintenance5.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrMaintenance5);
+    }
+
+    if (devExtensions.khrMaintenance6) {
+      enabledFeatures.khrMaintenance6 = m_deviceFeatures.khrMaintenance6;
+      enabledFeatures.khrMaintenance6.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR;
+      enabledFeatures.khrMaintenance6.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrMaintenance6);
+    }
+
+    if (devExtensions.khrMaintenance7) {
+      enabledFeatures.khrMaintenance7 = m_deviceFeatures.khrMaintenance7;
+      enabledFeatures.khrMaintenance7.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
+      enabledFeatures.khrMaintenance7.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrMaintenance7);
+    }
+
+    if (devExtensions.khrPipelineBinary) {
+      enabledFeatures.khrPipelineBinary = m_deviceFeatures.khrPipelineBinary;
+      enabledFeatures.khrPipelineBinary.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_FEATURES_KHR;
+      enabledFeatures.khrPipelineBinary.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrPipelineBinary);
+    }
+
+    if (devExtensions.extPipelineCreationCacheControl) {
+      enabledFeatures.extPipelineCreationCacheControl = m_deviceFeatures.extPipelineCreationCacheControl;
+      enabledFeatures.extPipelineCreationCacheControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT;
+      enabledFeatures.extPipelineCreationCacheControl.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extPipelineCreationCacheControl);
+    }
+
+    if (devExtensions.extPipelineProtectedAccess) {
+      enabledFeatures.extPipelineProtectedAccess = m_deviceFeatures.extPipelineProtectedAccess;
+      enabledFeatures.extPipelineProtectedAccess.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES_EXT;
+      enabledFeatures.extPipelineProtectedAccess.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extPipelineProtectedAccess);
+    }
+
+    if (devExtensions.extPipelineRobustness) {
+      enabledFeatures.extPipelineRobustness = m_deviceFeatures.extPipelineRobustness;
+      enabledFeatures.extPipelineRobustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT;
+      enabledFeatures.extPipelineRobustness.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extPipelineRobustness);
+    }
+
+    if (devExtensions.extGlobalPriorityQuery) {
+      enabledFeatures.extGlobalPriorityQuery = m_deviceFeatures.extGlobalPriorityQuery;
+      enabledFeatures.extGlobalPriorityQuery.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT;
+      enabledFeatures.extGlobalPriorityQuery.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extGlobalPriorityQuery);
+    }
+
+    if (devExtensions.extImageCompressionControl) {
+      enabledFeatures.extImageCompressionControl = m_deviceFeatures.extImageCompressionControl;
+      enabledFeatures.extImageCompressionControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_FEATURES_EXT;
+      enabledFeatures.extImageCompressionControl.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extImageCompressionControl);
+    }
+
+    if (devExtensions.extImageCompressionControlSwapchain) {
+      enabledFeatures.extImageCompressionControlSwapchain = m_deviceFeatures.extImageCompressionControlSwapchain;
+      enabledFeatures.extImageCompressionControlSwapchain.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_FEATURES_EXT;
+      enabledFeatures.extImageCompressionControlSwapchain.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extImageCompressionControlSwapchain);
+    }
+
+    if (devExtensions.extRasterizationOrderAttachmentAccess) {
+      enabledFeatures.extRasterizationOrderAttachmentAccess = m_deviceFeatures.extRasterizationOrderAttachmentAccess;
+      enabledFeatures.extRasterizationOrderAttachmentAccess.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_EXT;
+      enabledFeatures.extRasterizationOrderAttachmentAccess.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extRasterizationOrderAttachmentAccess);
     }
 
     // Report the desired overallocation behaviour to the driver
@@ -773,6 +942,116 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME)) {
       m_deviceFeatures.khrTimelineSemaphore.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR;
       m_deviceFeatures.khrTimelineSemaphore.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrTimelineSemaphore);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
+      m_deviceFeatures.khrDynamicRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+      m_deviceFeatures.khrDynamicRendering.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrDynamicRendering);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME)) {
+      m_deviceFeatures.khrDynamicRenderingLocalRead.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR;
+      m_deviceFeatures.khrDynamicRenderingLocalRead.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrDynamicRenderingLocalRead);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME)) {
+      m_deviceFeatures.extDynamicRenderingUnusedAttachments.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT;
+      m_deviceFeatures.extDynamicRenderingUnusedAttachments.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDynamicRenderingUnusedAttachments);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_EXTENSION_NAME)) {
+      m_deviceFeatures.extMultisampledRenderToSingleSampled.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT;
+      m_deviceFeatures.extMultisampledRenderToSingleSampled.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extMultisampledRenderToSingleSampled);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME)) {
+      m_deviceFeatures.extExtendedDynamicState2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT;
+      m_deviceFeatures.extExtendedDynamicState2.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extExtendedDynamicState2);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)) {
+      m_deviceFeatures.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+      m_deviceFeatures.extExtendedDynamicState3.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extExtendedDynamicState3);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME)) {
+      m_deviceFeatures.extVertexInputDynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT;
+      m_deviceFeatures.extVertexInputDynamicState.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extVertexInputDynamicState);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)) {
+      m_deviceFeatures.khrSynchronization2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+      m_deviceFeatures.khrSynchronization2.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrSynchronization2);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY_EXTENSION_NAME)) {
+      m_deviceFeatures.khrZeroInitializeWorkgroupMemory.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES_KHR;
+      m_deviceFeatures.khrZeroInitializeWorkgroupMemory.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrZeroInitializeWorkgroupMemory);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME)) {
+      m_deviceFeatures.khrImagelessFramebuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR;
+      m_deviceFeatures.khrImagelessFramebuffer.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrImagelessFramebuffer);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_4_EXTENSION_NAME)) {
+      m_deviceFeatures.khrMaintenance4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
+      m_deviceFeatures.khrMaintenance4.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance4);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_5_EXTENSION_NAME)) {
+      m_deviceFeatures.khrMaintenance5.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR;
+      m_deviceFeatures.khrMaintenance5.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance5);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_6_EXTENSION_NAME)) {
+      m_deviceFeatures.khrMaintenance6.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR;
+      m_deviceFeatures.khrMaintenance6.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance6);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_7_EXTENSION_NAME)) {
+      m_deviceFeatures.khrMaintenance7.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
+      m_deviceFeatures.khrMaintenance7.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance7);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_PIPELINE_BINARY_EXTENSION_NAME)) {
+      m_deviceFeatures.khrPipelineBinary.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_FEATURES_KHR;
+      m_deviceFeatures.khrPipelineBinary.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrPipelineBinary);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME)) {
+      m_deviceFeatures.extPipelineCreationCacheControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT;
+      m_deviceFeatures.extPipelineCreationCacheControl.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extPipelineCreationCacheControl);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_PIPELINE_PROTECTED_ACCESS_EXTENSION_NAME)) {
+      m_deviceFeatures.extPipelineProtectedAccess.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES_EXT;
+      m_deviceFeatures.extPipelineProtectedAccess.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extPipelineProtectedAccess);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_PIPELINE_ROBUSTNESS_EXTENSION_NAME)) {
+      m_deviceFeatures.extPipelineRobustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT;
+      m_deviceFeatures.extPipelineRobustness.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extPipelineRobustness);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_GLOBAL_PRIORITY_QUERY_EXTENSION_NAME)) {
+      m_deviceFeatures.extGlobalPriorityQuery.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT;
+      m_deviceFeatures.extGlobalPriorityQuery.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extGlobalPriorityQuery);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_IMAGE_COMPRESSION_CONTROL_EXTENSION_NAME)) {
+      m_deviceFeatures.extImageCompressionControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_FEATURES_EXT;
+      m_deviceFeatures.extImageCompressionControl.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extImageCompressionControl);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_EXTENSION_NAME)) {
+      m_deviceFeatures.extImageCompressionControlSwapchain.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_FEATURES_EXT;
+      m_deviceFeatures.extImageCompressionControlSwapchain.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extImageCompressionControlSwapchain);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_EXTENSION_NAME)) {
+      m_deviceFeatures.extRasterizationOrderAttachmentAccess.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_EXT;
+      m_deviceFeatures.extRasterizationOrderAttachmentAccess.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extRasterizationOrderAttachmentAccess);
     }
 
     m_vki->vkGetPhysicalDeviceFeatures2(m_handle, &m_deviceFeatures.core);
