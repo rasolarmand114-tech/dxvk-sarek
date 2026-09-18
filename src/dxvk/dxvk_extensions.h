@@ -282,32 +282,73 @@ namespace dxvk {
     DxvkExt extConservativeRasterization      = { VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,         DxvkExtMode::Optional };
     DxvkExt extCustomBorderColor              = { VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt extDepthClipEnable                = { VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,                  DxvkExtMode::Optional };
+    DxvkExt extDynamicRenderingUnusedAttachments = { VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME, DxvkExtMode::Optional };
     DxvkExt extExtendedDynamicState           = { VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,             DxvkExtMode::Optional };
+    DxvkExt extExtendedDynamicState2          = { VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,           DxvkExtMode::Optional };
+    DxvkExt extExtendedDynamicState3          = { VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt extFullScreenExclusive            = { VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,              DxvkExtMode::Optional };
+    DxvkExt extGlobalPriority                 = { VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME,                    DxvkExtMode::Optional };
+    DxvkExt extGlobalPriorityQuery            = { VK_EXT_GLOBAL_PRIORITY_QUERY_EXTENSION_NAME,               DxvkExtMode::Optional };
     DxvkExt extHostQueryReset                 = { VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME,                   DxvkExtMode::Optional };
+    DxvkExt extImageCompressionControl        = { VK_EXT_IMAGE_COMPRESSION_CONTROL_EXTENSION_NAME,           DxvkExtMode::Optional };
+    DxvkExt extImageCompressionControlSwapchain = { VK_EXT_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_EXTENSION_NAME, DxvkExtMode::Optional };
+    DxvkExt extImageDrmFormatModifier         = { VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt extMemoryBudget                   = { VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,                      DxvkExtMode::Passive  };
     DxvkExt extMemoryPriority                 = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                    DxvkExtMode::Optional };
+    DxvkExt extMultisampledRenderToSingleSampled = { VK_EXT_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_EXTENSION_NAME, DxvkExtMode::Optional };
     DxvkExt extNonSeamlessCubeMap             = { VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME,              DxvkExtMode::Optional };
+    DxvkExt extPipelineCreationCacheControl   = { VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME,     DxvkExtMode::Optional };
+    DxvkExt extPipelineCreationFeedback       = { VK_EXT_PIPELINE_CREATION_FEEDBACK_EXTENSION_NAME,          DxvkExtMode::Optional };
+    DxvkExt extPipelineProtectedAccess        = { VK_EXT_PIPELINE_PROTECTED_ACCESS_EXTENSION_NAME,           DxvkExtMode::Optional };
+    DxvkExt extPipelineRobustness             = { VK_EXT_PIPELINE_ROBUSTNESS_EXTENSION_NAME,                 DxvkExtMode::Optional };
+    DxvkExt extQueueFamilyForeign             = { VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME,                DxvkExtMode::Optional };
+    DxvkExt extRasterizationOrderAttachmentAccess = { VK_EXT_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_EXTENSION_NAME, DxvkExtMode::Optional };
     DxvkExt extRobustness2                    = { VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,                       DxvkExtMode::Optional };
     DxvkExt extShaderDemoteToHelperInvocation = { VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME, DxvkExtMode::Optional };
     DxvkExt extShaderStencilExport            = { VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt extShaderViewportIndexLayer       = { VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,        DxvkExtMode::Optional };
     DxvkExt extTransformFeedback              = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,                 DxvkExtMode::Optional };
     DxvkExt extVertexAttributeDivisor         = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,           DxvkExtMode::Optional };
+    DxvkExt extVertexInputDynamicState        = { VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,          DxvkExtMode::Optional };
     DxvkExt khrBufferDeviceAddress            = { VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,              DxvkExtMode::Disabled };
     DxvkExt khrCreateRenderPass2              = { VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt khrDepthStencilResolve            = { VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt khrDrawIndirectCount              = { VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt khrDriverProperties               = { VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME,                  DxvkExtMode::Optional };
+    DxvkExt khrDynamicRendering               = { VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,                  DxvkExtMode::Optional };
+    DxvkExt khrDynamicRenderingLocalRead      = { VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME,        DxvkExtMode::Optional };
     DxvkExt khrExternalMemoryWin32            = { VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt khrExternalSemaphoreWin32         = { VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt khrImageFormatList                = { VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,                  DxvkExtMode::Optional };
+    DxvkExt khrImagelessFramebuffer           = { VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME,               DxvkExtMode::Optional };
+    DxvkExt khrIncrementalPresent             = { VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME,                 DxvkExtMode::Optional };
+    DxvkExt khrMaintenance4                   = { VK_KHR_MAINTENANCE_4_EXTENSION_NAME,                       DxvkExtMode::Optional };
+    DxvkExt khrMaintenance5                   = { VK_KHR_MAINTENANCE_5_EXTENSION_NAME,                       DxvkExtMode::Optional };
+    DxvkExt khrMaintenance6                   = { VK_KHR_MAINTENANCE_6_EXTENSION_NAME,                       DxvkExtMode::Optional };
+    DxvkExt khrMaintenance7                   = { VK_KHR_MAINTENANCE_7_EXTENSION_NAME,                       DxvkExtMode::Optional };
+    DxvkExt khrPipelineBinary                 = { VK_KHR_PIPELINE_BINARY_EXTENSION_NAME,                     DxvkExtMode::Optional };
+    DxvkExt khrPipelineLibrary                = { VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,                    DxvkExtMode::Optional };
     DxvkExt khrSamplerMirrorClampToEdge       = { VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,       DxvkExtMode::Optional };
     DxvkExt khrShaderFloatControls            = { VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt khrSwapchain                      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                          DxvkExtMode::Required };
+    DxvkExt khrSwapchainMutableFormat         = { VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME,            DxvkExtMode::Optional };
+    DxvkExt khrSynchronization2               = { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,                   DxvkExtMode::Optional };
     DxvkExt khrTimelineSemaphore              = { VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,                 DxvkExtMode::Optional };
+    DxvkExt khrZeroInitializeWorkgroupMemory  = { VK_KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY_EXTENSION_NAME,    DxvkExtMode::Optional };
     DxvkExt nvxBinaryImport                   = { VK_NVX_BINARY_IMPORT_EXTENSION_NAME,                      DxvkExtMode::Disabled };
     DxvkExt nvxImageViewHandle                = { VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,                  DxvkExtMode::Disabled };
+
+    // NOTE: VK_KHR_maintenance1/2/3 are not listed here because this project's
+    // Vulkan floor is already 1.1 (see dxvk_instance.cpp / dxvk_device_filter.cpp),
+    // and all three were promoted to core in 1.1 - they are unconditionally
+    // available and need no extension string or feature struct.
+    //
+    // VK_KHR_pipeline_library and VK_EXT_pipeline_creation_feedback and
+    // VK_EXT_queue_family_foreign and VK_EXT_global_priority and
+    // VK_KHR_swapchain_mutable_format and VK_KHR_incremental_present add no
+    // VkPhysicalDeviceFeatures2-chainable struct of their own (they only add
+    // create-info structs used at pipeline/queue/swapchain creation time), so
+    // there is nothing to enable in createDevice() beyond the extension string.
   };
   
   /**
