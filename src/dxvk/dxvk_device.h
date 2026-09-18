@@ -5,6 +5,7 @@
 #include "dxvk_compute.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_context.h"
+#include "dxvk_ext_functions.h"
 #include "dxvk_extensions.h"
 #include "dxvk_fence.h"
 #include "dxvk_framebuffer.h"
@@ -170,6 +171,18 @@ namespace dxvk {
      */
     const DxvkDeviceFeatures& features() const {
       return m_features;
+    }
+
+    /**
+     * \brief Extra Vulkan 1.3-era entry points
+     *
+     * Function pointers for the dynamic rendering / extended dynamic
+     * state / synchronization2 commands this fork now uses, resolved
+     * independently of the main dispatch table. See dxvk_ext_functions.h.
+     * \returns Extra device functions
+     */
+    const DxvkExtDeviceFunctions& extFunctions() const {
+      return m_extFunctions;
     }
 
     /**
@@ -499,6 +512,7 @@ namespace dxvk {
 
     DxvkDeviceFeatures          m_features;
     DxvkDeviceInfo              m_properties;
+    DxvkExtDeviceFunctions      m_extFunctions;
 
     DxvkDevicePerfHints         m_perfHints;
     DxvkObjects                 m_objects;
