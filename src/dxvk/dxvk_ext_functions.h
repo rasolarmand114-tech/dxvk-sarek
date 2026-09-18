@@ -12,17 +12,17 @@ namespace dxvk {
    * the source dump this patch was built from (only src/dxvk was provided),
    * so the handful of Vulkan 1.3-era commands this patch adds calls to -
    * dynamic rendering, the extended_dynamic_state cull/front-face setters,
-   * and synchronization2 - are resolved independently here via
-   * vkGetDeviceProcAddr, instead of assuming they already exist as members
-   * of a class this patch cannot see or verify.
+   * and synchronization2 - are resolved independently here, instead of
+   * assuming they already exist as members of a class this patch cannot
+   * see or verify.
    *
-   * This assumes \c vk::DeviceFn (the class behind \c DxvkDevice::vkd())
-   * exposes \c vkGetDeviceProcAddr as a callable member, which is true for
-   * stock DXVK's generated dispatch tables (every class of this kind needs
-   * that entry point to bootstrap its own other members, so it is kept
-   * public) and should hold for this fork too. If this fork's copy of
-   * vulkan_loader.h names that member differently, update the one call site
-   * in dxvk_ext_functions.cpp - nothing else here depends on its name.
+   * dxvk_ext_functions.cpp resolves vkGetDeviceProcAddr straight from
+   * vulkan-1.dll (a plain DLL export per the Vulkan loader spec, so this
+   * does not depend on any particular member of vk::DeviceFn/LibraryFn
+   * existing under a given name - an earlier version of this file assumed
+   * vk::DeviceFn exposed vkGetDeviceProcAddr as a member, which is the same
+   * kind of assumption that failed to compile for vk::LibraryFn::
+   * vkEnumerateInstanceVersion elsewhere in this patch).
    *
    * If a driver does not support the extension a given pointer belongs to,
    * that pointer stays \c nullptr. Every call site in this patch checks the
