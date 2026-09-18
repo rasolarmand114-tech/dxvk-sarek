@@ -37,6 +37,7 @@ namespace dxvk {
     GpDirtyDepthBounds,         ///< Depth bounds have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyViewport,            ///< Viewport state has changed
+    GpDirtyCullMode,            ///< Cull mode / front face changed (VK_EXT_extended_dynamic_state)
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
@@ -141,6 +142,10 @@ namespace dxvk {
     DxvkDepthBias       depthBias         = { 0.0f, 0.0f, 0.0f };
     DxvkDepthBounds     depthBounds       = { false, 0.0f, 1.0f };
     uint32_t            stencilReference  = 0;
+    // Only meaningful when DxvkContextFeature::ExtendedDynamicState is set;
+    // see DxvkContext::setRasterizerState / updateDynamicState.
+    VkCullModeFlags     cullMode          = VK_CULL_MODE_BACK_BIT;
+    VkFrontFace         frontFace         = VK_FRONT_FACE_CLOCKWISE;
   };
 
 
