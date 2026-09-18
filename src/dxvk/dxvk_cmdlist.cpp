@@ -7,6 +7,7 @@ namespace dxvk {
   : m_device        (device),
     m_vkd           (device->vkd()),
     m_vki           (device->instance()->vki()),
+    m_extFunctions  (device->extFunctions()),
     m_cmdBuffersUsed(0),
     m_descriptorPoolTracker(device) {
     const auto& graphicsQueue = m_device->queues().graphics;
