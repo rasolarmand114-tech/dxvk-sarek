@@ -50,9 +50,13 @@ namespace dxvk {
    * which VMA has no visibility into.
    */
   struct DxvkMemoryStats {
-  VkDeviceSize memoryAllocated = 0;
-  VkDeviceSize memoryUsed      = 0;
-  VkDeviceSize memoryBudget    = 0;
+    VkDeviceSize memoryAllocated = 0;
+    VkDeviceSize memoryUsed      = 0;
+    // Estimated total budget for this heap (this process's fair share of
+    // it, on systems that report per-process budgets), as computed by VMA
+    // from VK_EXT_memory_budget when available, or from the heap's nominal
+    // size otherwise. 0 only if VMA has no data for this heap at all.
+    VkDeviceSize memoryBudget    = 0;
   };
 
 
