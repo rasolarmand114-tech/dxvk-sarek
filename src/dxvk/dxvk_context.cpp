@@ -3994,7 +3994,8 @@ namespace dxvk {
 
       VkRenderingAttachmentInfoKHR depthAttachment;
       VkRenderingAttachmentInfoKHR stencilAttachment;
-      bool hasDepth = false;
+      bool hasDepthAspect   = false;
+      bool hasStencilAspect = false;
 
       for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
         const DxvkAttachment& attachment = framebufferInfo.getAttachment(i);
@@ -4015,11 +4016,24 @@ namespace dxvk {
           info.loadOp = ops.colorOps[colorIndex].loadOp;
           colorAttachments[colorAttachmentCount++] = info;
         } else {
+          // FIX: a depth-only format (e.g. VK_FORMAT_D32_SFLOAT, as commonly
+          // used for shadow maps) has no stencil aspect at all - pointing
+          // pStencilAttachment at it regardless, as this code used to do
+          // unconditionally, is a spec violation (VUID-VkRenderingInfo-
+          // pStencilAttachment-06090 and friends): the view must actually
+          // contain a stencil aspect, or the pointer must be null. Same
+          // reasoning as the colorAttachmentCount fix in dxvk_graphics.cpp,
+          // just for aspects instead of count - both are the pipeline/
+          // rendering-info side not matching what dxvk_renderpass.cpp
+          // already knows how to do correctly for the classic path.
+          auto aspectMask = imageFormatInfo(attachment.view->info().format)->aspectMask;
+          hasDepthAspect   = (aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)   != 0;
+          hasStencilAspect = (aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) != 0;
+
           depthAttachment          = info;
           depthAttachment.loadOp   = ops.depthOps.loadOpD;
           stencilAttachment        = info;
           stencilAttachment.loadOp = ops.depthOps.loadOpS;
-          hasDepth = true;
         }
       }
 
@@ -4032,8 +4046,8 @@ namespace dxvk {
       renderingInfo.viewMask             = 0;
       renderingInfo.colorAttachmentCount = colorAttachmentCount;
       renderingInfo.pColorAttachments    = colorAttachments.data();
-      renderingInfo.pDepthAttachment     = hasDepth ? &depthAttachment   : nullptr;
-      renderingInfo.pStencilAttachment   = hasDepth ? &stencilAttachment : nullptr;
+      renderingInfo.pDepthAttachment     = hasDepthAspect   ? &depthAttachment   : nullptr;
+      renderingInfo.pStencilAttachment   = hasStencilAspect ? &stencilAttachment : nullptr;
 
       m_cmd->cmdBeginRendering(&renderingInfo);
     } else {
