@@ -715,11 +715,33 @@ namespace dxvk {
         stencilAttachmentFormat = passFormat.depth.format;
     }
 
+    // FIX: colorAttachmentCount here must equal the colorAttachmentCount
+    // that will actually be passed to vkCmdBeginRendering for any render
+    // pass this pipeline gets used in (DxvkContext::renderPassBindFramebuffer,
+    // dxvk_context.cpp) - the Vulkan spec requires them to match exactly for
+    // a pipeline created with VK_NULL_HANDLE renderPass; a mismatch is
+    // undefined behaviour, not merely suboptimal. That call site counts only
+    // the color attachments actually bound in the current DxvkFramebufferInfo,
+    // which for most draws is well under MaxNumRenderTargets (most draws use
+    // 1-4 render targets, not the max of 8) - so hardcoding MaxNumRenderTargets
+    // here was wrong on nearly every draw, not an edge case. Derive the same
+    // count from passFormat instead: the highest color slot with a format
+    // that isn't VK_FORMAT_UNDEFINED, plus one (0 if none are bound), which
+    // is exactly what a DxvkFramebufferInfo built for this same passFormat
+    // would report through numAttachments()/getColorAttachmentIndex().
+    uint32_t colorAttachmentCount = 0;
+    for (uint32_t i = MaxNumRenderTargets; i > 0; i--) {
+      if (colorAttachmentFormats[i - 1] != VK_FORMAT_UNDEFINED) {
+        colorAttachmentCount = i;
+        break;
+      }
+    }
+
     VkPipelineRenderingCreateInfoKHR renderingInfo;
     renderingInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
     renderingInfo.pNext                   = nullptr;
     renderingInfo.viewMask                = 0;
-    renderingInfo.colorAttachmentCount    = MaxNumRenderTargets;
+    renderingInfo.colorAttachmentCount    = colorAttachmentCount;
     renderingInfo.pColorAttachmentFormats = colorAttachmentFormats.data();
     renderingInfo.depthAttachmentFormat   = depthAttachmentFormat;
     renderingInfo.stencilAttachmentFormat = stencilAttachmentFormat;
